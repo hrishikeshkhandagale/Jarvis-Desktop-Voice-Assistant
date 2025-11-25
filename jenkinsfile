@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         SSH_CRED    = 'python'
-        SERVER_IP   = '65.1.93.104'
+        SERVER_IP   = '52.66.240.126'
         REMOTE_USER = 'ubuntu'
         APP_DIR     = '/opt/jarvis'
         REPO_URL    = 'https://github.com/hrishikeshkhandagale/Jarvis-Desktop-Voice-Assistant.git'
