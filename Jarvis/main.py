@@ -3,22 +3,39 @@ import datetime
 import wikipedia
 import pyjokes
 import requests
+from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
-# Internet Search
+# GOOGLE SEARCH SCRAPER
+def google_search(query):
+    try:
+        url = f"https://www.google.com/search?q={query}"
+        headers = {
+            "User-Agent": "Mozilla/5.0"
+        }
+        response = requests.get(url, headers=headers)
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        # Extract first answer
+        ans = soup.find("div", class_="BNeawe").text
+        return ans
+
+    except:
+        return "No answer found."
+
+# INTERNET SEARCH (fallback)
 def internet_search(query):
     try:
-        url = f"https://api.duckduckgo.com/?q={query}&format=json&pretty=1"
-        data = requests.get(url).json()
-        if data.get("AbstractText"):
-            return data["AbstractText"]
+        result = google_search(query)
+        if result:
+            return result
         else:
-            return "No direct answer found — Here is a related link:\n" + data.get("AbstractURL", "Not available")
+            return "Could not find answer."
     except:
-        return "Internet search failed."
+        return "Search error."
 
-# Jarvis Logic
+# MAIN JARVIS LOGIC
 def jarvis_process(query):
     if not query:
         return "Please enter something."
@@ -37,15 +54,15 @@ def jarvis_process(query):
             key = q.replace("wikipedia", "").strip()
             return wikipedia.summary(key, sentences=2)
         except:
-            return "Wikipedia error or no results."
+            return "Wikipedia could not find anything."
 
     if "joke" in q:
         return pyjokes.get_joke()
 
-    if any(word in q for word in ["hello", "hi", "hey"]):
+    if any(word in q for word in ["hello", "hi"]):
         return "Hello Sir, Jarvis here!"
 
-    # Fallback — Internet Search
+    # 🔥 SUPER SEARCH → Always returns meaningful answer
     return internet_search(query)
 
 # HTML UI
@@ -54,120 +71,28 @@ HTML = """
 <head>
 <title>Jarvis Voice Assistant</title>
 <style>
-body {
-    background: #0d0d0d;
-    color: #00ffcc;
-    font-family: Arial;
-    text-align: center;
-    padding: 40px;
-}
-
-#box {
-    width: 70%;
-    margin: auto;
-    background: rgba(255,255,255,0.05);
-    padding: 30px;
-    border-radius: 20px;
-    box-shadow: 0 0 20px #00ffcc;
-}
-
-input {
-    width: 70%;
-    padding: 15px;
-    font-size: 18px;
-    border-radius: 10px;
-    background: black;
-    color: #00ffcc;
-    border: 2px solid #00ffcc;
-}
-
-button {
-    padding: 12px 20px;
-    font-size: 18px;
-    background: #00ffcc;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    margin-left: 10px;
-}
-
-button:hover {
-    background: #00ffaa;
-}
-
-#micBtn {
-    width: 60px;
-    height: 60px;
-    background: #00ffaa;
-    border-radius: 50%;
-    border: none;
-    cursor: pointer;
-    box-shadow: 0 0 20px #00ffaa;
-    animation: glow 1.5s infinite alternate;
-}
-
-@keyframes glow {
-    from { box-shadow: 0 0 10px #00ffaa; }
-    to { box-shadow: 0 0 25px #00ffaa; }
-}
-
-pre {
-    text-align: left;
-    background: black;
-    padding: 20px;
-    border-radius: 10px;
-    color: #00ffcc;
-}
+body { background:#0b0b0b; color:#00ffcc; font-family:Arial; text-align:center; padding:40px; }
+#box { width:70%; margin:auto; background:rgba(255,255,255,0.05); padding:30px; border-radius:20px; box-shadow:0 0 20px #00ffcc; }
+input { width:70%; padding:15px; font-size:18px; border-radius:10px; background:black; color:#00ffcc; border:2px solid #00ffcc; }
+button { padding:12px 20px; font-size:18px; background:#00ffcc; border-radius:10px; border:none; cursor:pointer; }
+button:hover { background:#00ffaa; }
+pre { background:black; padding:20px; border-radius:10px; color:#00ffcc; text-align:left; }
 </style>
-
-<script>
-// Speech-to-Text
-function startListening() {
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.lang = "en-US";
-
-    recognition.onresult = function(event) {
-        const text = event.results[0][0].transcript;
-        document.getElementById("query").value = text;
-    };
-
-    recognition.start();
-}
-
-// Text-to-Speech
-function speak(text) {
-    const speech = new SpeechSynthesisUtterance(text);
-    speech.pitch = 1;
-    speech.rate = 1;
-    speech.voice = window.speechSynthesis.getVoices()[1];
-    speechSynthesis.speak(speech);
-}
-</script>
-
 </head>
 <body>
 
 <h1>⚡ JARVIS VOICE ASSISTANT ⚡</h1>
 
 <div id="box">
-
 <form action="/" method="post">
-    <input type="text" id="query" name="query" placeholder="Ask Jarvis..." />
+    <input type="text" name="query" placeholder="Ask Jarvis..." />
     <button type="submit">Send</button>
-    <button id="micBtn" type="button" onclick="startListening()">🎤</button>
 </form>
 
 <h2>Response:</h2>
-<pre id="op">{{ output }}</pre>
-
-<script>
-    var rsp = "{{ output }}";
-    if (rsp.length > 1) {
-        speak(rsp);
-    }
-</script>
-
+<pre>{{ output }}</pre>
 </div>
+
 </body>
 </html>
 """
