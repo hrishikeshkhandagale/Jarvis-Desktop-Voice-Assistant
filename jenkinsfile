@@ -6,7 +6,7 @@ pipeline {
         SERVER_IP   = '52.66.240.126'
         REMOTE_USER = 'ubuntu'
         APP_DIR     = '/opt/jarvis'
-        REPO_URL    = 'https://github.com/hrishikeshkhandagale/Jarvis-Desktop-Voice-Assistant.git'
+        REPO_URL    = 'https://github.com/hrishikeshkhandagale/Jarvis-Chat-Assistant.git'
     }
 
     stages {
