@@ -1,0 +1,75 @@
+pipeline {
+    agent any
+
+    environment {
+        SSH_CRED    = 'python'                           // Jenkins SSH Key ID
+        SERVER_IP   = '15.207.16.122'                    // Your EC2 Public IP
+        REMOTE_USER = 'ubuntu'
+        APP_DIR     = '/opt/jarvis'
+        REPO_URL    = 'https://github.com/hrishikeshkhandagale/Jarvis-Desktop-Voice-Assistant.git'
+    }
+
+    stages {
+
+        stage('Deploy Jarvis App') {
+            steps {
+                sshagent(credentials: ["${SSH_CRED}"]) {
+
+                    sh '''
+                    echo "=== 1. Creating App Directory on EC2 ==="
+                    ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${SERVER_IP} "\
+                        sudo mkdir -p ${APP_DIR}; sudo chown ubuntu:ubuntu ${APP_DIR} -R" 
+
+
+                    echo "=== 2. Clone / Update Project ==="
+                    ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${SERVER_IP} "\
+                        if [ ! -d ${APP_DIR}/.git ]; then \
+                            git clone ${REPO_URL} ${APP_DIR}; \
+                        else \
+                            cd ${APP_DIR} && git pull; \
+                        fi"
+
+
+                    echo "=== 3. Install Dependencies ==="
+                    ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${SERVER_IP} "\
+                        sudo apt-get update -y && \
+                        sudo apt-get install -y python3 python3-pip && \
+                        pip3 install --break-system-packages -r ${APP_DIR}/requirements.txt || true"
+
+
+                    echo "=== 4. Creating Systemd Service ==="
+                    ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${SERVER_IP} "\
+                        sudo bash -c 'cat > /etc/systemd/system/jarvis.service <<EOF
+[Unit]
+Description=Jarvis App
+After=network.target
+
+[Service]
+WorkingDirectory=${APP_DIR}
+ExecStart=/usr/bin/python3 ${APP_DIR}/main.py
+Restart=always
+User=ubuntu
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
+EOF'"
+
+
+                    echo "=== 5. Restarting Service ==="
+                    ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${SERVER_IP} "\
+                        sudo systemctl daemon-reload && \
+                        sudo systemctl enable jarvis && \
+                        sudo systemctl restart jarvis; \
+                        sudo systemctl status jarvis --no-pager"
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success { echo "✔ Jarvis Deployment Successful!" }
+        failure { echo "❌ Jarvis Deployment Failed!" }
+    }
+}
