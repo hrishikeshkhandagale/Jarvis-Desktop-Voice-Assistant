@@ -3,37 +3,26 @@ import datetime
 import wikipedia
 import pyjokes
 import requests
-from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
-# GOOGLE SEARCH SCRAPER
-def google_search(query):
-    try:
-        url = f"https://www.google.com/search?q={query}"
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
-        response = requests.get(url, headers=headers)
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        # Extract first answer
-        ans = soup.find("div", class_="BNeawe").text
-        return ans
-
-    except:
-        return "No answer found."
-
-# INTERNET SEARCH (fallback)
+# SAFE INTERNET SEARCH
 def internet_search(query):
     try:
-        result = google_search(query)
-        if result:
-            return result
-        else:
-            return "Could not find answer."
+        url = f"https://api.duckduckgo.com/?q={query}&format=json&no_redirect=1&no_html=1"
+        data = requests.get(url).json()
+
+        if data.get("AbstractText"):
+            return data["AbstractText"]
+
+        if data.get("RelatedTopics") and len(data["RelatedTopics"]) > 0:
+            first = data["RelatedTopics"][0]
+            if "Text" in first:
+                return first["Text"]
+
+        return "No direct answer found."
     except:
-        return "Search error."
+        return "Search failed."
 
 # MAIN JARVIS LOGIC
 def jarvis_process(query):
@@ -59,11 +48,11 @@ def jarvis_process(query):
     if "joke" in q:
         return pyjokes.get_joke()
 
-    if any(word in q for word in ["hello", "hi"]):
+    if any(greet in q for greet in ["hello", "hi"]):
         return "Hello Sir, Jarvis here!"
 
-    # 🔥 SUPER SEARCH → Always returns meaningful answer
     return internet_search(query)
+
 
 # HTML UI
 HTML = """
