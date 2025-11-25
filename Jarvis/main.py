@@ -6,85 +6,7 @@ import requests
 
 app = Flask(__name__)
 
-HTML = """
-<html>
-<head>
-<title>JARVIS Web Assistant</title>
-<style>
-body {
-    background: linear-gradient(135deg, #0a0a0a, #1c1c1c);
-    color: #0f0;
-    font-family: Consolas;
-    padding: 40px;
-    text-align: center;
-}
-
-.container {
-    width: 60%;
-    margin: auto;
-    padding: 30px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 20px;
-    box-shadow: 0 0 20px #00ff88;
-    backdrop-filter: blur(10px);
-}
-
-input {
-    width: 80%;
-    padding: 12px;
-    font-size: 18px;
-    border-radius: 10px;
-    border: 2px solid #00ff88;
-    background: #000;
-    color: #0f0;
-}
-
-button {
-    padding: 12px 20px;
-    font-size: 18px;
-    background: #00ff88;
-    color: #000;
-    border-radius: 10px;
-    border: none;
-    cursor: pointer;
-    transition: 0.3s;
-}
-
-button:hover {
-    background: #0f0;
-}
-
-pre {
-    margin-top: 20px;
-    background: #000;
-    padding: 20px;
-    border-radius: 10px;
-    text-align: left;
-    color: #0f0;
-    box-shadow: 0 0 10px #00ff88;
-}
-</style>
-</head>
-<body>
-
-<h1 style="color:#00ff88; text-shadow:0 0 10px #00ff88;">⚡ JARVIS WEB ASSISTANT ⚡</h1>
-
-<div class="container">
-<form action="/" method="post">
-    <input type="text" name="query" placeholder="Ask Jarvis anything..." autofocus />
-    <br><br>
-    <button type="submit">Ask</button>
-</form>
-
-<h2 style="color:#00ff88;">Response:</h2>
-<pre>{{ output }}</pre>
-</div>
-
-</body>
-</html>
-"""
-
-# 🔥 DuckDuckGo search API
+# Internet Search
 def internet_search(query):
     try:
         url = f"https://api.duckduckgo.com/?q={query}&format=json&pretty=1"
@@ -92,13 +14,14 @@ def internet_search(query):
         if data.get("AbstractText"):
             return data["AbstractText"]
         else:
-            return "No direct answer found — but here is a related link:\n" + data.get("AbstractURL", "Not available")
+            return "No direct answer found — Here is a related link:\n" + data.get("AbstractURL", "Not available")
     except:
         return "Internet search failed."
 
+# Jarvis Logic
 def jarvis_process(query):
     if not query:
-        return "Please enter a valid command."
+        return "Please enter something."
 
     q = query.lower()
 
@@ -111,8 +34,8 @@ def jarvis_process(query):
 
     if "wikipedia" in q:
         try:
-            ask = q.replace("wikipedia", "").strip()
-            return wikipedia.summary(ask, sentences=2)
+            key = q.replace("wikipedia", "").strip()
+            return wikipedia.summary(key, sentences=2)
         except:
             return "Wikipedia error or no results."
 
@@ -120,10 +43,134 @@ def jarvis_process(query):
         return pyjokes.get_joke()
 
     if any(word in q for word in ["hello", "hi", "hey"]):
-        return "Hello Sir, Jarvis here! How can I assist you?"
+        return "Hello Sir, Jarvis here!"
 
-    # 🔥 ANY query → Internet Search  
+    # Fallback — Internet Search
     return internet_search(query)
+
+# HTML UI
+HTML = """
+<html>
+<head>
+<title>Jarvis Voice Assistant</title>
+<style>
+body {
+    background: #0d0d0d;
+    color: #00ffcc;
+    font-family: Arial;
+    text-align: center;
+    padding: 40px;
+}
+
+#box {
+    width: 70%;
+    margin: auto;
+    background: rgba(255,255,255,0.05);
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 0 20px #00ffcc;
+}
+
+input {
+    width: 70%;
+    padding: 15px;
+    font-size: 18px;
+    border-radius: 10px;
+    background: black;
+    color: #00ffcc;
+    border: 2px solid #00ffcc;
+}
+
+button {
+    padding: 12px 20px;
+    font-size: 18px;
+    background: #00ffcc;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    margin-left: 10px;
+}
+
+button:hover {
+    background: #00ffaa;
+}
+
+#micBtn {
+    width: 60px;
+    height: 60px;
+    background: #00ffaa;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 0 20px #00ffaa;
+    animation: glow 1.5s infinite alternate;
+}
+
+@keyframes glow {
+    from { box-shadow: 0 0 10px #00ffaa; }
+    to { box-shadow: 0 0 25px #00ffaa; }
+}
+
+pre {
+    text-align: left;
+    background: black;
+    padding: 20px;
+    border-radius: 10px;
+    color: #00ffcc;
+}
+</style>
+
+<script>
+// Speech-to-Text
+function startListening() {
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = "en-US";
+
+    recognition.onresult = function(event) {
+        const text = event.results[0][0].transcript;
+        document.getElementById("query").value = text;
+    };
+
+    recognition.start();
+}
+
+// Text-to-Speech
+function speak(text) {
+    const speech = new SpeechSynthesisUtterance(text);
+    speech.pitch = 1;
+    speech.rate = 1;
+    speech.voice = window.speechSynthesis.getVoices()[1];
+    speechSynthesis.speak(speech);
+}
+</script>
+
+</head>
+<body>
+
+<h1>⚡ JARVIS VOICE ASSISTANT ⚡</h1>
+
+<div id="box">
+
+<form action="/" method="post">
+    <input type="text" id="query" name="query" placeholder="Ask Jarvis..." />
+    <button type="submit">Send</button>
+    <button id="micBtn" type="button" onclick="startListening()">🎤</button>
+</form>
+
+<h2>Response:</h2>
+<pre id="op">{{ output }}</pre>
+
+<script>
+    var rsp = "{{ output }}";
+    if (rsp.length > 1) {
+        speak(rsp);
+    }
+</script>
+
+</div>
+</body>
+</html>
+"""
 
 @app.route("/", methods=["GET", "POST"])
 def home():
@@ -133,5 +180,4 @@ def home():
         output = jarvis_process(user_query)
     return render_template_string(HTML, output=output)
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+app.run(host="0.0.0.0", port=5000)
